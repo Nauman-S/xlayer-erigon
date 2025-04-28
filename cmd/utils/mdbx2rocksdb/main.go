@@ -32,6 +32,7 @@ func main() {
 	mdbxPath := flag.String("mdbx", "", "Path to the source MDBX database")
 	rocksdbPath := flag.String("rocksdb", "", "Path to the target RocksDB database")
 	verbose := flag.Bool("verbose", false, "Whether to output detailed logs")
+	label := flag.String("label", "", "db label of mdbx")
 	flag.Parse()
 
 	if *mdbxPath == "" || *rocksdbPath == "" {
@@ -54,20 +55,19 @@ func main() {
 	}
 
 	// Open the source MDBX database
-	logger.Info("Opening source MDBX database", "path", *mdbxPath)
-	srcDB, err := openMDBX(*mdbxPath, logger)
+	srcDB, err := openMDBX(*mdbxPath, *label, logger)
 	if err != nil {
 		logger.Error("Failed to open MDBX database", "path", *mdbxPath, "error", err)
 		os.Exit(1)
 	}
 	defer srcDB.Close()
 
-	specialTables := []string{
-		kv.HashedStorage,
-		kv.PlainState,
-	}
 	logger.Info("start querying all tables")
-	normalTables := queryTablesExcept(specialTables, srcDB)
+	normalTables, specialTables := queryAllTables(srcDB, map[string]struct{}{
+		kv.HashedStorage: {},
+		kv.PlainState:    {},
+	})
+	logger.Info("all normal tables", "special tables", specialTables, "normal tables", normalTables)
 
 	var totalRecords uint64
 	startTime := time.Now()
@@ -94,44 +94,38 @@ func main() {
 		"avg_speed", fmt.Sprintf("%.0f records/sec", float64(totalRecords)/elapsed.Seconds()))
 }
 
-func queryTablesExcept(specialTables []string, db kv.RwDB) []string {
-	specialTableMap := make(map[string]struct{})
-	for _, table := range specialTables {
-		specialTableMap[table] = struct{}{}
-	}
-
-	var tableNames []string
-
+func queryAllTables(db kv.RwDB, specialTablesMap map[string]struct{}) (normalTables []string, specialTables []string) {
 	if err := db.View(context.Background(), func(tx kv.Tx) error {
 		tables, err := tx.ListBuckets()
 		if err != nil {
 			return err
 		}
 
-		tableNames = make([]string, 0, len(tables))
 		for _, table := range tables {
-			if _, ok := specialTableMap[table]; ok {
-				continue
+			if _, ok := specialTablesMap[table]; ok {
+				specialTables = append(specialTables, table)
+			} else {
+				normalTables = append(normalTables, table)
 			}
-			tableNames = append(tableNames, table)
 		}
-
 		return nil
 	}); err != nil {
 		panic(fmt.Sprintf("Failed to list buckets. err=%v", err))
 	}
 
-	return tableNames
+	return
 }
 
-func openMDBX(path string, logger log.Logger) (kv.RwDB, error) {
+func openMDBX(path, label string, logger log.Logger) (kv.RwDB, error) {
+	logger.Info("Opening MDBX database", "path", path, "label", label)
 	roTxLimit := int64(32)
 	roTxsLimiter := semaphore.NewWeighted(roTxLimit)
 
 	opts := mdbx.NewMDBX(logger).
 		Path(path).
 		RoTxsLimiter(roTxsLimiter).
-		Readonly()
+		Readonly().
+		Label(kv.UnmarshalLabel(label))
 
 	return opts.Open(context.Background())
 }
@@ -207,12 +201,20 @@ func convertTables(tables []string, srcDB, dstDB kv.RwDB, logger log.Logger, aft
 		logger.Info("Converting table", "name", table)
 
 		start := time.Now()
-		recordCount := convertTable(table, srcDB, dstDB, logger)
+		keysStat, recordCount := convertTable(table, srcDB, dstDB, logger)
 		elapsed := time.Since(start)
+
+		duplicateKeyCnt := 0
+		for _, v := range keysStat {
+			if v > 1 {
+				duplicateKeyCnt++
+			}
+		}
 
 		logger.Info("Table conversion completed",
 			"table", table,
 			"records", recordCount,
+			"duplicate key count", duplicateKeyCnt,
 			"time", elapsed,
 			"speed", fmt.Sprintf("%.0f records/sec", float64(recordCount)/elapsed.Seconds()))
 		totalRecords += recordCount
@@ -223,7 +225,8 @@ func convertTables(tables []string, srcDB, dstDB kv.RwDB, logger log.Logger, aft
 	return totalRecords
 }
 
-func convertTable(table string, srcDB, dstDB kv.RwDB, logger log.Logger) uint64 {
+func convertTable(table string, srcDB, dstDB kv.RwDB, logger log.Logger) (map[string]int, uint64) {
+	keysStat := make(map[string]int)
 	recordCount := uint64(0)
 
 	// Process records in batches to avoid a single large transaction
@@ -246,6 +249,12 @@ func convertTable(table string, srcDB, dstDB kv.RwDB, logger log.Logger) uint64 
 			}
 
 			batch = append(batch, dataPair{K: k, V: v})
+			sk := string(k)
+			if cnt, ok := keysStat[sk]; ok {
+				keysStat[sk] = cnt + 1
+			} else {
+				keysStat[sk] = 1
+			}
 			recordCount++
 
 			if len(batch) >= batchSize {
@@ -264,7 +273,7 @@ func convertTable(table string, srcDB, dstDB kv.RwDB, logger log.Logger) uint64 
 	}
 	putBatch(table, dstDB, batch)
 
-	return recordCount
+	return keysStat, recordCount
 }
 
 func putBatch(table string, dstDB kv.RwDB, batch []dataPair) {

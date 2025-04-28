@@ -197,6 +197,8 @@ func UnmarshalLabel(s string) Label {
 		return InMem
 	case "diagnostics":
 		return DiagnosticsDB
+	case "smt": // For X Layer, split db
+		return SmtDB
 	default:
 		panic(fmt.Sprintf("unexpected label: %s", s))
 	}
