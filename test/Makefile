@@ -72,12 +72,12 @@ run: build-docker ## Runs a full node
 	$(RUN_DOCKER_DATA_AVAILABILITY_DB)
 	$(RUN_DOCKER_POOL_DB)
 	$(RUN_DOCKER_AGGREGATOR_DB)
-	sleep 3
+	sleep 10
 	$(RUN_DOCKER_DATA_AVAILABILITY)
 	$(RUN_DOCKER_APPROVE)
 
 	# app services
-	sleep 3
+	sleep 10
 	$(RUN_DOCKER_SEQ)
 	$(RUN_DOCKER_PROVER)
 	sleep 10
@@ -143,7 +143,7 @@ min-run: build-docker ## Runs a minimal node
 	$(RUN_DOCKER_GRAFANA)
 
 .PHONY: test # Run all tests on Linux, but some are not supported on Mac
-test: 
+test:
 	@echo "Starting tests at $$(date)"
 	@ERROR_COUNT=0; \
 	FAILED_TESTS=""; \
@@ -189,7 +189,7 @@ test-unwind-default:
 .PHONY: test-unwind-split-db
 test-unwind-split-db:
 	cd ../ && make test-unwind-split-db
-	kill 
+	kill
 	echo "Unwind tests passed"
 
 .PHONY: check_chinese_characters
@@ -489,9 +489,9 @@ mainnet: build-docker
 	$(RUN_DOCKER_PROMETHEUS)
 	$(RUN_DOCKER_GRAFANA)
 
-mainnet-executor: 
+mainnet-executor:
 	chmod +x ./scripts/mainnet-executor.sh
-	./scripts/mainnet-executor.sh 
+	./scripts/mainnet-executor.sh
 	$(RUN_DOCKER_STATELESS_EXECUTOR)
 	$(RUN_DOCKER_STATELESS_EXECUTOR_2)
 	$(RUN_DOCKER_STATELESS_EXECUTOR_3)
