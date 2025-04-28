@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <event>"
+    echo "Usage: $0 <event> [<task>]"
     echo "Valid events: pull_request, push, release."
     exit 1
 fi
@@ -17,6 +17,7 @@ if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "push" ] && [ "$EVENT" != "re
     echo "Error: Invalid event $EVENT. Valid events are: pull_request, push, release."
     exit 1
 fi
+ONLY_TASK=${2:-""}
 
 # ** Parse workflow file
 WORKFLOWFILE="./ci/workflows/workflows.yml"
@@ -33,10 +34,12 @@ fi
 declare -A tasks_base
 declare -A tasks_compose
 declare -A tasks_kurtosis
+declare -A task_pid
+declare -A task_status
 
 echo -e "Fetching tasks for event ${RED}$EVENT${NC} from ${GREEN}$WORKFLOWFILE${NC} ..."
 FT=0
-for ((i=0; i<$NT; i++)); do
+for i in `seq 0 $(($NT-1))`; do
     TASK_EVENTS=$(yq ".tasks[$i].events" $WORKFLOWFILE | tr -d ' \-' | tr '\n' ' ')
     if ! [[ "$TASK_EVENTS" =~ "$EVENT" ]]; then
         echo "Skipping task $i: $TASK_EVENTS"
@@ -46,6 +49,13 @@ for ((i=0; i<$NT; i++)); do
     TASK_NAME=$(yq ".tasks[$i].name" $WORKFLOWFILE | tr -d '"')
     TASK_TYPE=$(yq ".tasks[$i].type" $WORKFLOWFILE | tr -d '"')
     TASK_CMD=$(yq ".tasks[$i].command" $WORKFLOWFILE | tr -d '"')
+
+    if ! [ -z "$ONLY_TASK" ]; then
+        if [ "$TASK_NAME" != "$ONLY_TASK" ]; then
+            echo "Skipping task $TASK_NAME."
+            continue
+        fi
+    fi
 
     if [ "$TASK_TYPE" == "base" ]; then
         tasks_base["$TASK_NAME"]="$TASK_CMD"
@@ -63,8 +73,10 @@ for ((i=0; i<$NT; i++)); do
 done
 echo "Fetched $FT tasks."
 
-declare -A task_pid
-declare -A task_status
+if [ $FT -eq 0 ]; then
+    echo "Warning: No tasks found the given parameters! Exiting."
+    exit 2
+fi
 
 # Logs folder
 TSTAMP=$(date +%Y%m%d%H%M%S%N)
@@ -107,21 +119,16 @@ done
 # *** Run DinD (Docker-in-Docker) Docker Compose tasks
 # DinD Docker command
 BASE_NAME="base-xlayer-erigon-ci"
-docker run -d --name $BASE_NAME --privileged xlayer-erigon-ci:latest sh -c "./ci/utils/docker-setup-start.sh $DOCKER_REGISTRY_IP_PORT"
-sleep 5
-docker exec $BASE_NAME sh -c "cd ./ci/utils && ./docker-cache-pull.sh $DOCKER_REGISTRY_IP_PORT" > $LOGSDIR/docker-cache-pull.log 2>&1
 for task in "${!tasks_compose[@]}"; do
     echo "Running task: $task"
-    CMD="docker exec $BASE_NAME sh -c \"${tasks_compose[$task]}\""
+    NAME=$BASE_NAME-$task
+    docker run -d --name $NAME --privileged xlayer-erigon-ci:latest sh -c "./ci/utils/docker-setup-start.sh $DOCKER_REGISTRY_IP_PORT" > $LOGSDIR/logs-$task.log 2>&1
+    sleep 3
+    docker exec $NAME sh -c "cd ./ci/utils && ./docker-cache-pull.sh $DOCKER_REGISTRY_IP_PORT" > $LOGSDIR/docker-cache-pull.log >> $LOGSDIR/logs-$task.log 2>&1
+    CMD="docker exec $NAME sh -c \"${tasks_compose[$task]}\""
     echo "Command: $CMD"
-    eval $CMD > $LOGSDIR/logs-$task.log 2>&1
-    if [ $? -ne 0 ]; then
-        echo -e "${NC}Task $task ${RED}failed${NC}."
-        task_status[$task]="failed"
-    else
-        echo -e "${NC}Task $task ${GREEN}succeeded${NC}."
-        task_status[$task]="succeeded"
-    fi
+    eval $CMD >> $LOGSDIR/logs-$task.log 2>&1 &
+    task_pid[$task]=$!
 done
 
 # *** Run DinD (Docker-in-Docker) Kurtosis tasks
@@ -149,14 +156,22 @@ for task in "${!task_pid[@]}"; do
     fi
 done
 
+for task in "${!tasks_compose[@]}"; do
+    NAME=$BASE_NAME-$task
+    docker stop $NAME
+    docker rm $NAME
+done
+
 # Summary
 echo ""
-for task in "${!tasks_status[@]}"; do
+echo "Summary of tasks:"
+for task in "${!task_status[@]}"; do
     if [ "${task_status[$task]}" == "failed" ]; then
-        echo -e "${NC}$task ${RED}failed${NC}"
+        echo -e "- ${NC}$task ${RED}failed${NC}"
     else
-        echo -e "${NC}$task ${GREEN}succeeded${NC}"
+        echo -e "- ${NC}$task ${GREEN}succeeded${NC}"
     fi
 done
 
-echo "All tasks completed. Logs are in ${GREEN}$LOGSDIR${NC}."
+echo ""
+echo -e "All tasks completed. Logs are in ${GREEN}$LOGSDIR${NC}."
