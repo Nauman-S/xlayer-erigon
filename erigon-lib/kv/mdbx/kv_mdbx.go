@@ -95,9 +95,10 @@ func NewMDBX(log log.Logger) MdbxOpts {
 	return opts
 }
 
-func (opts MdbxOpts) GetLabel() kv.Label  { return opts.label }
-func (opts MdbxOpts) GetInMem() bool      { return opts.inMem }
-func (opts MdbxOpts) GetPageSize() uint64 { return opts.pageSize }
+func (opts MdbxOpts) GetLogger() log.Logger { return opts.log }
+func (opts MdbxOpts) GetLabel() kv.Label    { return opts.label }
+func (opts MdbxOpts) GetInMem() bool        { return opts.inMem }
+func (opts MdbxOpts) GetPageSize() uint64   { return opts.pageSize }
 
 func (opts MdbxOpts) Label(label kv.Label) MdbxOpts {
 	opts.label = label
@@ -114,6 +115,10 @@ func (opts MdbxOpts) RoTxsLimiter(l *semaphore.Weighted) MdbxOpts {
 	return opts
 }
 
+func (opts MdbxOpts) GetRoTxsLimiter() *semaphore.Weighted {
+	return opts.readTxLimiter
+}
+
 func (opts MdbxOpts) PageSize(v uint64) MdbxOpts {
 	opts.pageSize = v
 	return opts
@@ -127,6 +132,10 @@ func (opts MdbxOpts) GrowthStep(v datasize.ByteSize) MdbxOpts {
 func (opts MdbxOpts) Path(path string) MdbxOpts {
 	opts.path = path
 	return opts
+}
+
+func (opts MdbxOpts) GetPath() string {
+	return opts.path
 }
 
 func (opts MdbxOpts) Set(opt MdbxOpts) MdbxOpts {
@@ -168,6 +177,9 @@ func (opts MdbxOpts) HasFlag(flag uint) bool { return opts.flags&flag != 0 }
 func (opts MdbxOpts) Readonly() MdbxOpts {
 	opts.flags = opts.flags | mdbx.Readonly
 	return opts
+}
+func (opts MdbxOpts) IsReadonly() bool {
+	return opts.HasFlag(mdbx.Readonly)
 }
 func (opts MdbxOpts) Accede() MdbxOpts {
 	opts.flags = opts.flags | mdbx.Accede
@@ -1261,6 +1273,7 @@ func (tx *MdbxTx) Append(bucket string, k, v []byte) error {
 	}
 	return c.Append(k, v)
 }
+
 func (tx *MdbxTx) AppendDup(bucket string, k, v []byte) error {
 	c, err := tx.statelessCursor(bucket)
 	if err != nil {

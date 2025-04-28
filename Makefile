@@ -26,6 +26,7 @@ CGO_CFLAGS += -DMDBX_FORCE_ASSERTIONS=0 # Enable MDBX's asserts by default in 'd
 CGO_CFLAGS += -O
 CGO_CFLAGS += -D__BLST_PORTABLE__
 CGO_CFLAGS += -Wno-unknown-warning-option -Wno-enum-int-mismatch -Wno-strict-prototypes -Wno-unused-but-set-variable
+CGO_CFLAGS += -I$(CURDIR)/deps/rocksdb/include
 
 CGO_LDFLAGS := $(shell $(GO) env CGO_LDFLAGS 2> /dev/null)
 ifeq ($(shell uname -s), Darwin)
@@ -33,6 +34,7 @@ ifeq ($(shell uname -s), Darwin)
 		CGO_LDFLAGS += -mmacosx-version-min=13.3
 	endif
 endif
+CGO_LDFLAGS += -L$(CURDIR)/deps/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd
 
 # about netgo see: https://github.com/golang/go/issues/30310#issuecomment-471669125 and https://github.com/golang/go/issues/57757
 BUILD_TAGS = nosqlite,noboltdb
@@ -111,7 +113,7 @@ dbg:
 %.cmd:
 	@# Note: $* is replaced by the command name
 	@echo "Building $*"
-	@cd ./cmd/$* && $(GOBUILD) -o $(GOBIN)/$*
+	cd ./cmd/$* && $(GOBUILD) -o $(GOBIN)/$*
 	@echo "Run \"$(GOBIN)/$*\" to launch $*."
 
 build-libs:
@@ -121,8 +123,11 @@ else ifeq ($(UNAME), Linux )
 	@sudo apt install libgtest-dev libomp-dev libgmp-dev
 endif
 
+rocksdb:
+	cd deps/rocksdb && EXTRA_CFLAGS="-Wno-error=maybe-uninitialized -Wno-error=uninitialized" EXTRA_CXXFLAGS="-Wno-error=maybe-uninitialized -Wno-error=uninitialized" make -j8 static_lib
+
 ## erigon:                            build erigon
-cdk-erigon: go-version cdk-erigon.cmd
+cdk-erigon: go-version rocksdb cdk-erigon.cmd
 	@rm -f $(GOBIN)/tg # Remove old binary to prevent confusion where users still use it because of the scripts
 
 COMMANDS += devnet

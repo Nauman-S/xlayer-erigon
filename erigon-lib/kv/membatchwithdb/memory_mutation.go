@@ -687,6 +687,10 @@ func (m *MemoryMutation) RwCursor(bucket string) (kv.RwCursor, error) {
 	return m.makeCursor(bucket)
 }
 
+func (m *MemoryMutation) SpaceDirty() (uint64, uint64, error) {
+	return 0, 0, nil
+}
+
 // Cursor creates a new cursor (the real fun begins here)
 func (m *MemoryMutation) CursorDupSort(bucket string) (kv.CursorDupSort, error) {
 	return m.makeCursor(bucket)

@@ -58,7 +58,6 @@ import (
 	proto_txpool "github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/kvcache"
-	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon-lib/types"
 )
 
@@ -1629,7 +1628,7 @@ func (p *TxPool) flush(ctx context.Context, db kv.RwDB) (written uint64, err err
 		if err != nil {
 			return err
 		}
-		written, _, err = tx.(*mdbx.MdbxTx).SpaceDirty()
+		written, _, err = tx.SpaceDirty()
 		if err != nil {
 			return err
 		}
@@ -1670,7 +1669,7 @@ func (p *TxPool) flushLocked(tx kv.RwTx) (err error) {
 	}
 	for i, txHash := range txHashes {
 		binary.BigEndian.PutUint64(encID, uint64(i))
-		if err := tx.Append(kv.RecentLocalTransaction, encID, []byte(txHash)); err != nil {
+		if err := tx.Put(kv.RecentLocalTransaction, encID, []byte(txHash)); err != nil {
 			return err
 		}
 	}

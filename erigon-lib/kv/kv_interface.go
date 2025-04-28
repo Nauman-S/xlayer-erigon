@@ -436,6 +436,8 @@ type RwTx interface {
 	// CollectMetrics - does collect all DB-related and Tx-related metrics
 	// this method exists only in RwTx to avoid concurrency
 	CollectMetrics()
+
+	SpaceDirty() (uint64, uint64, error)
 }
 
 type BucketMigratorRO interface {

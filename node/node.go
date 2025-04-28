@@ -40,6 +40,7 @@ import (
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
 	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon-lib/kv/memdb"
 	"github.com/ledgerwatch/erigon/migrations"
@@ -297,11 +298,14 @@ func (n *Node) DataDir() string {
 }
 
 func OpenDatabase(ctx context.Context, config *nodecfg.Config, label kv.Label, name string, readonly bool, isStandaloneSMTDatabase bool, logger log.Logger) (kv.RwDB, error) {
+	var tablesCfg kv.TableCfg
 	switch label {
 	case kv.ChainDB:
 		name = "chaindata"
+		tablesCfg = kv.ChaindataTablesCfg
 	case kv.TxPoolDB:
 		name = "txpool"
+		tablesCfg = kv.TxpoolTablesCfg
 	case kv.ConsensusDB:
 		if len(name) == 0 {
 			return nil, fmt.Errorf("expected a consensus name")
@@ -364,7 +368,7 @@ func OpenDatabase(ctx context.Context, config *nodecfg.Config, label kv.Label, n
 		default:
 		}
 
-		return opts.Open(ctx)
+		return dbbuilder.NewDB(config.DatabaseType, ctx, opts, tablesCfg, config.EnableConbineLog)
 	}
 	var err error
 	db, err = openFunc(false)

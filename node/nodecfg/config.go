@@ -27,6 +27,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/ledgerwatch/erigon-lib/common/datadir"
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
 	"github.com/ledgerwatch/erigon/cmd/rpcdaemon/cli/httpcfg"
 	"github.com/ledgerwatch/erigon/common"
 	"github.com/ledgerwatch/erigon/common/paths"
@@ -166,6 +167,9 @@ type Config struct {
 	HealthCheck bool
 
 	Http httpcfg.HttpCfg
+
+	DatabaseType     dbbuilder.DatabseType
+	EnableConbineLog bool
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into

@@ -27,6 +27,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/fixedgas"
 	emath "github.com/ledgerwatch/erigon-lib/common/math"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
 	"github.com/ledgerwatch/erigon-lib/types"
 )
 
@@ -62,6 +63,9 @@ type Config struct {
 	NoGossip bool // this mode doesn't broadcast any txs, and if receive remote-txn - skip it
 
 	PurgeDistance time.Duration
+
+	DatabaseType     dbbuilder.DatabseType
+	EnableConbineLog bool
 }
 
 var DefaultConfig = Config{
@@ -86,6 +90,8 @@ var DefaultConfig = Config{
 	NoGossip: true, // centralised sequencing for [zkevm] doesn't need tx gossiping
 
 	OverrideShanghaiTime: nil,
+
+	DatabaseType: dbbuilder.DatabseTypeMdbx,
 }
 
 type DiscardReason uint8

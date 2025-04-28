@@ -19,10 +19,12 @@ package txpooluitl
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/c2h5oh/datasize"
 	mdbx2 "github.com/erigontech/mdbx-go/mdbx"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
+	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
+	"time"
+
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/txpool/txpoolcfg"
 	"github.com/ledgerwatch/log/v3"
@@ -31,7 +33,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/direct"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/kvcache"
-	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon-lib/types"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/zk/apollo"
@@ -103,12 +104,12 @@ func SaveChainConfigIfNeed(ctx context.Context, coreDB kv.RoDB, txPoolDB kv.RwDB
 }
 
 func AllComponents(ctx context.Context, cfg txpoolcfg.Config, ethCfg *ethconfig.Config, cache kvcache.Cache, newTxs chan types.Announcements, chainDB kv.RoDB, sentryClients []direct.SentryClient, stateChangesClient txpool.StateChangesClient) (kv.RwDB, *txpool.TxPool, *txpool.Fetch, *txpool.Send, *txpool.GrpcServer, error) {
-	txPoolDB, err := mdbx.NewMDBX(log.New()).Label(kv.TxPoolDB).Path(cfg.DBDir).
+	opts := mdbx.NewMDBX(log.New()).Label(kv.TxPoolDB).Path(cfg.DBDir).
 		WithTableCfg(func(defaultBuckets kv.TableCfg) kv.TableCfg { return kv.TxpoolTablesCfg }).
 		Flags(func(f uint) uint { return f ^ mdbx2.Durable | mdbx2.SafeNoSync }).
 		GrowthStep(16 * datasize.MB).
-		SyncPeriod(30 * time.Second).
-		Open(ctx)
+		SyncPeriod(30 * time.Second)
+	txPoolDB, err := dbbuilder.NewDB(cfg.DatabaseType, ctx, opts, kv.TxpoolTablesCfg, cfg.EnableConbineLog)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}

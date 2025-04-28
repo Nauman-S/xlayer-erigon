@@ -47,6 +47,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/txpool/txpoolcfg"
 
 	"github.com/ledgerwatch/erigon-lib/chain/networkname"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
 	"github.com/ledgerwatch/erigon/cl/clparams"
 	"github.com/ledgerwatch/erigon/cmd/downloader/downloadernat"
 	"github.com/ledgerwatch/erigon/cmd/utils/flags"
@@ -246,6 +247,10 @@ var (
 		Name:  "txpool.purge.distance",
 		Usage: "Transactions older than this distance will be purged",
 		Value: txpoolcfg.DefaultConfig.PurgeDistance,
+	}
+	TxPoolDBTypeFlag = cli.StringFlag{
+		Name:  "txpool.dbtype",
+		Usage: "the database type txpool will use",
 	}
 	// Miner settings
 	MiningEnabledFlag = cli.BoolFlag{
@@ -1512,6 +1517,17 @@ var (
 		Usage: "transaction count fetched from txpool each time",
 		Value: 1000,
 	}
+
+	ChainDataDBTypeFlag = cli.StringFlag{
+		Name:  "chaindata.dbtype",
+		Usage: "the type of database the node will use to store chain data",
+	}
+
+	CombineDBLogEnable = cli.BoolFlag{
+		Name:  "combinedb.log.enable",
+		Usage: "whether enable combined db log",
+		Value: false,
+	}
 )
 
 var MetricFlags = []cli.Flag{&MetricsEnabledFlag, &MetricsHTTPFlag, &MetricsPortFlag, &DiagDisabledFlag, &DiagEndpointAddrFlag, &DiagEndpointPortFlag, &DiagSpeedTestFlag}
@@ -1863,6 +1879,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *nodecfg.Config, logger log.Logger) {
 	setDataDir(ctx, cfg)
 	setNodeUserIdent(ctx, cfg)
 	SetP2PConfig(ctx, &cfg.P2P, cfg.NodeName(), cfg.Dirs.DataDir, logger)
+	setChainDataDBType(ctx, cfg)
 
 	cfg.SentryLogPeerInfo = ctx.IsSet(SentryLogPeerInfoFlag.Name)
 }
@@ -2309,6 +2326,7 @@ func SetEthConfig(ctx *cli.Context, nodeConfig *nodecfg.Config, cfg *ethconfig.C
 	cfg.TxPool = ethconfig.DefaultTxPool2Config(cfg)
 	cfg.TxPool.DBDir = nodeConfig.Dirs.TxPool
 	cfg.YieldSize = ctx.Uint64(YieldSizeFlag.Name)
+	setTxPoolBType(ctx, &cfg.TxPool)
 
 	setEthash(ctx, nodeConfig.Dirs.DataDir, cfg)
 	setClique(ctx, &cfg.Clique, nodeConfig.Dirs.DataDir)
@@ -2488,5 +2506,23 @@ func CobraFlags(cmd *cobra.Command, urfaveCliFlagsLists ...[]cli.Flag) {
 				panic(fmt.Errorf("unexpected type: %T", flag))
 			}
 		}
+	}
+}
+
+func setChainDataDBType(ctx *cli.Context, cfg *nodecfg.Config) {
+	if ctx.IsSet(ChainDataDBTypeFlag.Name) {
+		cfg.DatabaseType = dbbuilder.ToDatabaseType(ctx.String(ChainDataDBTypeFlag.Name))
+	}
+	if ctx.IsSet(CombineDBLogEnable.Name) {
+		cfg.EnableConbineLog = ctx.Bool(CombineDBLogEnable.Name)
+	}
+}
+
+func setTxPoolBType(ctx *cli.Context, cfg *txpoolcfg.Config) {
+	if ctx.IsSet(TxPoolDBTypeFlag.Name) {
+		cfg.DatabaseType = dbbuilder.ToDatabaseType(ctx.String(TxPoolDBTypeFlag.Name))
+	}
+	if ctx.IsSet(CombineDBLogEnable.Name) {
+		cfg.EnableConbineLog = ctx.Bool(CombineDBLogEnable.Name)
 	}
 }

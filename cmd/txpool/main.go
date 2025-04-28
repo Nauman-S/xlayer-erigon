@@ -16,6 +16,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	proto_sentry "github.com/ledgerwatch/erigon-lib/gointerfaces/sentry"
+	"github.com/ledgerwatch/erigon-lib/kv/dbbuilder"
 	"github.com/ledgerwatch/erigon-lib/kv/kvcache"
 	"github.com/ledgerwatch/erigon-lib/kv/remotedb"
 	"github.com/ledgerwatch/erigon-lib/kv/remotedbserver"
@@ -76,6 +77,8 @@ var (
 	commitEvery   time.Duration
 	purgeEvery    time.Duration
 	purgeDistance time.Duration
+
+	dbType string
 )
 
 func init() {
@@ -117,6 +120,7 @@ func init() {
 	rootCmd.PersistentFlags().Uint64Var(&freeGasLimit, utils.TxPoolFreeGasLimit.Name, ethconfig.DeprecatedDefaultTxPoolConfig.FreeGasLimit, utils.TxPoolFreeGasLimit.Usage)
 	rootCmd.Flags().BoolVar(&enableFreeGasList, utils.TxPoolEnableFreeGasList.Name, ethconfig.DeprecatedDefaultTxPoolConfig.EnableFreeGasList, utils.TxPoolEnableFreeGasList.Usage)
 	rootCmd.PersistentFlags().StringVar(&freeGasList, utils.TxPoolFreeGasList.Name, "", utils.TxPoolFreeGasList.Usage)
+	rootCmd.PersistentFlags().StringVar(&dbType, utils.TxPoolDBTypeFlag.Name, "mdbx", utils.TxPoolDBTypeFlag.Usage)
 }
 
 var rootCmd = &cobra.Command{
@@ -195,6 +199,8 @@ func doTxpool(ctx context.Context, logger log.Logger) error {
 		sender := common.HexToAddress(senderHex)
 		cfg.TracedSenders[i] = string(sender[:])
 	}
+
+	cfg.DatabaseType = dbbuilder.ToDatabaseType(dbType)
 
 	// For X Layer tx pool access
 	ethCfg := &ethconfig.Defaults
