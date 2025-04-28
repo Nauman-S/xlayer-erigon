@@ -168,7 +168,7 @@ func (avit *alwaysValidRDBIterator) reCreate() {
 	if avit.currentKey != nil {
 		avit.it.Seek(avit.currentKey)
 		if !avit.it.Valid() {
-			log.Warn("seek to %x failed. may be deleted", avit.currentKey)
+			log.Warn(fmt.Sprintf("seek to %x failed. may be deleted", avit.currentKey))
 			avit.InvalidCurrent()
 		} else {
 			avit.currentValue = avit.it.Value()
