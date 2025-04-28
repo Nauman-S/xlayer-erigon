@@ -72,12 +72,12 @@ run: build-docker ## Runs a full node
 	$(RUN_DOCKER_DATA_AVAILABILITY_DB)
 	$(RUN_DOCKER_POOL_DB)
 	$(RUN_DOCKER_AGGREGATOR_DB)
-	sleep 10
+	sleep 5
 	$(RUN_DOCKER_DATA_AVAILABILITY)
 	$(RUN_DOCKER_APPROVE)
 
 	# app services
-	sleep 10
+	sleep 5
 	$(RUN_DOCKER_SEQ)
 	$(RUN_DOCKER_PROVER)
 	sleep 10
@@ -104,12 +104,12 @@ all: build-docker ## Runs a full node
 	$(RUN_DOCKER_BRIDGE_REDIS)
 	$(RUN_DOCKER_BRIDGE_ZOOKEEPER)
 	$(RUN_DOCKER_BRIDGE_COIN_KAFKA)
-	sleep 3
+	sleep 5
 	$(RUN_DOCKER_DATA_AVAILABILITY)
 	$(RUN_DOCKER_APPROVE)
 
 	# app services
-	sleep 3
+	sleep 5
 	$(RUN_DOCKER_SEQ)
 	$(RUN_DOCKER_PROVER)
 	sleep 10
@@ -123,7 +123,7 @@ all: build-docker ## Runs a full node
 	# bridge services
 	sleep 30
 	$(RUN_DOCKER_BRIDGE_SERVICE)
-	sleep 3
+	sleep 5
 	$(RUN_DOCKER_BRIDGE_UI)
 
 	# monitoring services
@@ -223,7 +223,7 @@ lint:
 
 .PHONY: test-e2e
 test-e2e: stop all ## Runs group xlayer feature e2e tests checking race conditions
-	sleep 3
+	sleep 5
 	docker ps -a
 	trap '$(STOP)' EXIT; MallocNanoZone=0 go test -count=1 -failfast -race -v -p 1 -timeout 600s ../ci/e2e-1/...
 	echo "E2E tests passed"
