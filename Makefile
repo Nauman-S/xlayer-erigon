@@ -111,7 +111,7 @@ dbg:
 %.cmd:
 	@# Note: $* is replaced by the command name
 	@echo "Building $*"
-	@cd ./cmd/$* && $(GOBUILD) -o $(GOBIN)/$*
+	@cd ./cmd/$* && $(GOBUILD) -gcflags "all=-N -l" -o $(GOBIN)/$*
 	@echo "Run \"$(GOBIN)/$*\" to launch $*."
 
 build-libs:

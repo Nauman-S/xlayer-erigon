@@ -33,5 +33,5 @@ func generateSubscriptionID() SubscriptionID {
 	}
 	// if the computer has no functioning secure rand source, it will just use the incrementing number
 	hex.Write(id[:])
-	return SubscriptionID(sb.String())
+	return SubscriptionID(strings.TrimLeft(sb.String(), "0"))
 }
