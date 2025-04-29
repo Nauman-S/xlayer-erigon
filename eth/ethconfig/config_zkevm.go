@@ -110,6 +110,7 @@ type Zk struct {
 	BadTxAllowance                 uint64
 	RejectLowGasPriceTransactions  bool
 	RejectLowGasPriceTolerance     float64
+	SequencerMaxBlockSealTime      time.Duration
 }
 
 var DefaultZkConfig = Zk{
