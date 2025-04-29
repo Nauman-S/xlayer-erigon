@@ -372,9 +372,9 @@ BatchLoop:
 		log.Info(fmt.Sprintf("[%s] Starting block %d (forkid %v)...", logPrefix, blockNumber, batchState.forkId))
 		logTicker.Reset(10 * time.Second)
 		// For X Layer block timer
+		blockMinedTx := 0
 		blockTimer := time.NewTimer(cfg.zk.XLayer.SequencerMaxBlockSealTime)
 		ethBlockGasPool := new(core.GasPool).AddGas(transactionGasLimit) // used only in normalcy mode per block
-		minedTx := 0
 
 		if batchState.isL1Recovery() {
 			blockNumbersInBatchSoFar, err := batchContext.sdb.hermezDb.GetL2BlockNosByBatch(batchState.batchNumber)
@@ -463,7 +463,7 @@ BatchLoop:
 				break
 			}
 			// For X Layer, block timer
-			if minedTx > 0 && time.Since(startTime) >= cfg.zk.SequencerBlockSealTime {
+			if blockMinedTx > 0 && time.Since(startTime) >= cfg.zk.SequencerBlockSealTime {
 				blockTimer.Reset(0)
 			}
 
@@ -769,7 +769,8 @@ BatchLoop:
 				}
 			}
 
-			minedTx += len(batchState.blockState.transactionsForInclusion)
+			// For X Layer, block timer
+			blockMinedTx += len(batchState.blockState.transactionsForInclusion)
 			// remove bad and mined transactions from the list for inclusion
 			for i := len(batchState.blockState.transactionsForInclusion) - 1; i >= 0; i-- {
 				tx := batchState.blockState.transactionsForInclusion[i]
