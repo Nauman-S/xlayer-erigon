@@ -159,7 +159,7 @@ func TestAddLocalTxsWithOkPayTxs(t *testing.T) {
 	assert.NoError(err)
 	assert.True(allConditionsOk)
 
-	// Check that only 15 transactions are yielded
+	// Check that 15 transactions are yielded, and normal transactions are included as well
 	assert.Equal(15, count)
 
 	// Check only all the OkPay transactions were included
