@@ -1,0 +1,4 @@
+Server = "xlayer-seq:6901"
+Port = 7901
+File = "/home/dsrelay/datarelay.bin"
+Log = "info"

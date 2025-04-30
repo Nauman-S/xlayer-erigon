@@ -35,6 +35,8 @@ zkevm.sequencer-batch-sleep-duration: "0s"
 
 zkevm.data-stream-host: "localhost"
 zkevm.data-stream-port: 6900
+zkevm.non-validation-data-stream-host: "localhost"
+zkevm.non-validation-data-stream-port: 6901
 zkevm.default-gas-price: 1000000000
 zkevm.max-gas-price: 0
 zkevm.gas-price-factor: 0.000001
