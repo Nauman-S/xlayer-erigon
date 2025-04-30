@@ -102,6 +102,11 @@ type HttpCfg struct {
 	L2RpcUrl                          string
 
 	// For X Layer
-	HttpApiKeys     string
-	MethodRateLimit string
+	HttpApiKeys                                    string
+	MethodRateLimit                                string
+	NonValidationDataStreamPort                    int
+	NonValidationDataStreamHost                    string
+	NonValidationDataStreamWriteTimeout            time.Duration
+	NonValidationDataStreamInactivityTimeout       time.Duration
+	NonValidationDataStreamInactivityCheckInterval time.Duration
 }

@@ -153,6 +153,9 @@ type Config = ethconfig.Config
 type PreStartTasks struct {
 	WarmUpDataStream  bool
 	PurgeWitnessCache bool
+
+	// For X Layer, non validation datastream
+	WarmUpNonValidationDataStream bool
 }
 
 // Ethereum implements the Ethereum full node service.
@@ -247,6 +250,8 @@ type Ethereum struct {
 	smtFlushCancel context.CancelFunc
 	smtFlushDoneCh chan struct{}
 	verifier       *legacy_executor_verifier.LegacyExecutorVerifier
+	// For X Layer, non validation datastream
+	nonValidationStreamServer server.StreamServer
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1063,6 +1068,11 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 		}
 
+		// For X Layer, non validation datastream
+		if err = backend.initNonValidationStreamServer(stack, httpCfg); err != nil {
+			return nil, err
+		}
+
 		backend.preStartTasks.PurgeWitnessCache = config.WitnessCachePurge
 
 		// entering ZK territory!
@@ -1182,6 +1192,12 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			dataStreamServer = dataStreamServerFactory.CreateDataStreamServer(backend.streamServer, backend.chainConfig.ChainID.Uint64())
 		}
 
+		// For X Layer, non validation datastream
+		var nonValidationDataStreamServer server.DataStreamServer
+		if backend.nonValidationStreamServer != nil {
+			nonValidationDataStreamServer = dataStreamServerFactory.CreateDataStreamServer(backend.nonValidationStreamServer, backend.chainConfig.ChainID.Uint64())
+		}
+
 		if isSequencer {
 			// if we are sequencing transactions, we do the sequencing loop...
 			witnessGenerator := witness.NewGenerator(
@@ -1262,6 +1278,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.verifier,
 				l1InfoTreeUpdater,
 				hook,
+				// For X Layer, non validation datastream
+				nonValidationDataStreamServer,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
@@ -1470,6 +1488,12 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 			log.Error(err.Error())
 			return
 		}
+
+		// For X Layer, non validation datastream
+		if err := cli.StartDataStream(s.nonValidationStreamServer); err != nil {
+			log.Error(err.Error())
+			return
+		}
 	}()
 
 	// Register the backend on the node
@@ -1509,6 +1533,11 @@ func (s *Ethereum) PreStart() error {
 		if err = tx.Commit(); err != nil {
 			return err
 		}
+	}
+
+	// For X Layer, non validation datastream
+	if err := s.warmUpNonValidationStreamServer(); err != nil {
+		return err
 	}
 
 	if s.preStartTasks.PurgeWitnessCache {

@@ -59,3 +59,11 @@ func ApplyFlagsForNodeXLayerConfig(ctx *cli.Context, cfg *nodecfg.Config) {
 	cfg.Http.HttpApiKeys = ctx.String(utils.HTTPApiKeysFlag.Name)
 	cfg.Http.MethodRateLimit = ctx.String(utils.MethodRateLimitFlag.Name)
 }
+
+func ApplyFlagsForNonValidationDataStreamConfig(ctx *cli.Context, cfg *nodecfg.Config) {
+	cfg.Http.NonValidationDataStreamPort = ctx.Int(utils.NonValidationDataStreamPort.Name)
+	cfg.Http.NonValidationDataStreamHost = ctx.String(utils.NonValidationDataStreamHost.Name)
+	cfg.Http.NonValidationDataStreamWriteTimeout = ctx.Duration(utils.NonValidationDataStreamWriteTimeout.Name)
+	cfg.Http.NonValidationDataStreamInactivityTimeout = ctx.Duration(utils.NonValidationDataStreamInactivityTimeout.Name)
+	cfg.Http.NonValidationDataStreamInactivityCheckInterval = ctx.Duration(utils.NonValidationDataStreamInactivityCheckInterval.Name)
+}

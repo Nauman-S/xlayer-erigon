@@ -303,6 +303,32 @@ var (
 		Usage: "Skip empty blocks",
 		Value: false,
 	}
+	// Non Validation DataStream
+	NonValidationDataStreamPort = cli.UintFlag{
+		Name:  "zkevm.non-validation-data-stream-port",
+		Usage: "Define the port used for the zkevm non validation data stream",
+		Value: 0,
+	}
+	NonValidationDataStreamHost = cli.StringFlag{
+		Name:  "zkevm.non-validation-data-stream-host",
+		Usage: "Define the host used for the zkevm non validation data stream",
+		Value: "",
+	}
+	NonValidationDataStreamWriteTimeout = cli.DurationFlag{
+		Name:  "zkevm.non-validation-data-stream-writeTimeout",
+		Usage: "Define the TCP write timeout when sending data to a non validation datastream client",
+		Value: 20 * time.Second,
+	}
+	NonValidationDataStreamInactivityTimeout = cli.DurationFlag{
+		Name:  "zkevm.non-validation-data-stream-inactivity-timeout",
+		Usage: "Define the inactivity timeout when interacting with a non validation data stream server",
+		Value: 10 * time.Minute,
+	}
+	NonValidationDataStreamInactivityCheckInterval = cli.DurationFlag{
+		Name:  "zkevm.non-validation-data-stream-inactivity-check-interval",
+		Usage: "Define the inactivity check interval timeout when interacting with a non validation data stream server",
+		Value: 5 * time.Minute,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

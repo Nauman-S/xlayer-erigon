@@ -554,6 +554,7 @@ func setEmbeddedRpcDaemon(ctx *cli.Context, cfg *nodecfg.Config, logger log.Logg
 
 	// For X Layer
 	ApplyFlagsForNodeXLayerConfig(ctx, cfg)
+	ApplyFlagsForNonValidationDataStreamConfig(ctx, cfg)
 }
 
 // setPrivateApi populates configuration fields related to the remote

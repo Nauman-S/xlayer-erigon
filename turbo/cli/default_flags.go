@@ -350,6 +350,11 @@ var DefaultFlags = []cli.Flag{
 	&utils.BulkAddTxsWaitTimeFlag,
 	&utils.EnableAddTxNotify,
 	&utils.SequencerSkipEmptyBlocks,
+	&utils.NonValidationDataStreamPort,
+	&utils.NonValidationDataStreamHost,
+	&utils.NonValidationDataStreamWriteTimeout,
+	&utils.NonValidationDataStreamInactivityTimeout,
+	&utils.NonValidationDataStreamInactivityCheckInterval,
 
 	&utils.ACLPrintHistory,
 	&utils.InfoTreeUpdateInterval,

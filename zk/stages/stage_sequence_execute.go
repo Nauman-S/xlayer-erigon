@@ -199,6 +199,8 @@ func sequencingBatchStep(
 	batchState := newBatchState(forkId, batchNumberForStateInitialization, executionAt+1, cfg.zk.UseExecutors(), cfg.zk.L1SyncStartBlock > 0, cfg.txPool, resequenceBatchJob)
 	blockDataSizeChecker := NewBlockDataChecker(cfg.zk.ShouldCountersBeUnlimited(batchState.isL1Recovery()))
 	streamWriter := newSequencerBatchStreamWriter(batchContext, batchState)
+	// For X Layer
+	nonValidationStreamWriter := newSequencerBatchNonValidationStreamWriter(batchContext, batchState)
 
 	// injected batch
 	if executionAt == 0 {
@@ -211,6 +213,16 @@ func sequencingBatchStep(
 		}
 		if err = stages.SaveStageProgress(sdb.tx, stages.DataStream, 1); err != nil {
 			return err
+		}
+
+		// For X Layer
+		if cfg.nonValidationDataStreamServer != nil {
+			if err = cfg.nonValidationDataStreamServer.WriteWholeBatchToStream(logPrefix, sdb.tx, sdb.hermezDb.HermezDbReader, lastBatch, injectedBatchBatchNumber); err != nil {
+				return err
+			}
+			if err = stages.SaveStageProgress(sdb.tx, stages.NonValidationDataStream, 1); err != nil {
+				return err
+			}
 		}
 
 		// For X Layer, split db and ac
@@ -903,6 +915,11 @@ BatchLoop:
 			log.Info(fmt.Sprintf("[%s] Finish block %d with %d transactions... (%d gas/s)", logPrefix, blockNumber, len(batchState.blockState.builtBlockElements.transactions), int(gasPerSecond)), "info-tree-index", infoTreeIndexProgress, "taken", time.Since(startTime))
 		} else {
 			log.Info(fmt.Sprintf("[%s] Finish block %d with %d transactions...", logPrefix, blockNumber, len(batchState.blockState.builtBlockElements.transactions)), "info-tree-index", infoTreeIndexProgress, "taken", time.Since(startTime))
+		}
+
+		// For X Layer
+		if err := nonValidationStreamWriter.CommitNewUpdatesWithoutVerification(forkId, batchState.batchNumber, batchState.builtBlocks); err != nil {
+			return err
 		}
 
 		// do not use remote executor in l1recovery mode

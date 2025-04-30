@@ -96,6 +96,9 @@ type SequenceBlockCfg struct {
 
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
+
+	// For X Layer, non validation datastream
+	nonValidationDataStreamServer server.DataStreamServer
 }
 
 func StageSequenceBlocksCfg(
@@ -127,6 +130,9 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
+
+	// For X Layer, non validation datastream
+	nonValidationDataStreamServer server.DataStreamServer,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -158,6 +164,8 @@ func StageSequenceBlocksCfg(
 
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
+		// For X Layer, non validation datastream
+		nonValidationDataStreamServer: nonValidationDataStreamServer,
 	}
 }
 
