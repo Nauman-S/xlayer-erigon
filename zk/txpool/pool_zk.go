@@ -42,10 +42,18 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 	minFeeCap := uint256.NewInt(0).SetAllOne()
 	minTip := uint64(math.MaxUint64)
 	var toDel []*metaTx // can't delete items while iterate them
+	// For X Layer, optimize tx pool
+	pending.mtx.Lock()
+
+	senderAddr := common.Address{}
+	freeType, gpMul := p.checkFreeGasSenderXLayer(senderID, &senderAddr)
+	findSenderOk := senderAddr != [20]byte{}
+
 	byNonce.ascend(senderID, func(mt *metaTx) bool {
 		if mt.Tx.Traced {
 			log.Info(fmt.Sprintf("TX TRACING: onSenderStateChange loop iteration idHash=%x senderID=%d, senderNonce=%d, txn.nonce=%d, currentSubPool=%s", mt.Tx.IDHash, senderID, senderNonce, mt.Tx.Nonce, mt.currentSubPool))
 		}
+		mt.subPool |= IsLocal
 		if senderNonce > mt.Tx.Nonce {
 			if mt.Tx.Traced {
 				log.Info(fmt.Sprintf("TX TRACING: removing due to low nonce for idHash=%x senderID=%d, senderNonce=%d, txn.nonce=%d, currentSubPool=%s", mt.Tx.IDHash, senderID, senderNonce, mt.Tx.Nonce, mt.currentSubPool))
@@ -53,7 +61,8 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 			// del from sub-pool
 			switch mt.currentSubPool {
 			case PendingSubPool:
-				pending.Remove(mt)
+				// For X Layer, optimize tx pool
+				pending.RemoveNoLock(mt)
 			case BaseFeeSubPool:
 				baseFee.Remove(mt)
 			case QueuedSubPool:
@@ -73,6 +82,35 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 		}
 		mt.minTip = minTip
 
+		// For X Layer
+		// free type:
+		// 0. not free
+		// 1. is claim tx;
+		// 2. new bridge account with the first few tx
+		// 3. special project
+		if findSenderOk && freeType == notFree {
+			freeType, gpMul = p.checkFreeGasTxXLayer(senderAddr, mt.Tx)
+		}
+		// parse claim tx or dex tx, and add the withdraw addr into free gas cache
+		p.setFreeGasByNonceCache(senderID, mt, freeType == claim)
+		if freeType > notFree {
+			// get dynamic gp
+			// here for the case when restart gpCache has not init
+			// use the max uint64 as default because the remain claimTx should handle first
+			var newGpBig uint64 = math.MaxUint64
+			if p.gpCache != nil {
+				dGp := p.gpCache.GetLatestPriceReadOnly()
+				if dGp != nil {
+					newGpBig = dGp.Uint64() * gpMul
+					// newGpBig = newGpBig.Mul(dGp, big.NewInt(int64(gpMul)))
+				}
+				//log.Debug(fmt.Sprintf("Free tx: nonce:%d, type %d. dGp:%v, factor:%d, newGp:%d", mt.Tx.Nonce, freeType, dGp, gpMul, newGpBig))
+			}
+
+			mt.minTip = newGpBig
+			mt.minFeeCap = *uint256.NewInt(mt.minTip)
+		}
+
 		mt.nonceDistance = 0
 		if mt.Tx.Nonce > senderNonce { // no uint underflow
 			mt.nonceDistance = mt.Tx.Nonce - senderNonce
@@ -86,7 +124,8 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 		// parameter of minimal base fee. Set to 0 if feeCap is less than minimum base fee, which means
 		// this transaction will never be included into this particular chain.
 		mt.subPool &^= EnoughFeeCapProtocol
-		if mt.minFeeCap.Cmp(uint256.NewInt(protocolBaseFee)) >= 0 {
+		// For X Layer, optimize tx pool
+		if mt.minFeeCap.CmpUint64(protocolBaseFee) >= 0 {
 			mt.subPool |= EnoughFeeCapProtocol
 		} else {
 			mt.subPool = 0 // TODO: we immediately drop all transactions if they have no first bit - then maybe we don't need this bit at all? And don't add such transactions to queue?
@@ -134,7 +173,8 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 		// Some fields of mt might have changed, need to fix the invariants in the subpool best and worst queues
 		switch mt.currentSubPool {
 		case PendingSubPool:
-			pending.Updated(mt)
+			// For X Layer, optimize tx pool
+			pending.UpdatedNoLock(mt)
 		case BaseFeeSubPool:
 			baseFee.Updated(mt)
 		case QueuedSubPool:
@@ -142,6 +182,8 @@ func (p *TxPool) onSenderStateChange(senderID uint64, senderNonce uint64, sender
 		}
 		return true
 	})
+	// For X Layer, optimize tx pool
+	pending.mtx.Unlock()
 	for _, mt := range toDel {
 		discard(mt, NonceTooLow)
 	}
@@ -281,41 +323,32 @@ func (p *TxPool) MarkForDiscardFromPendingBest(txHash common.Hash) {
 }
 
 func (p *TxPool) RemoveMinedTransactions(ctx context.Context, tx kv.Tx, blockGasLimit uint64, ids []common.Hash) error {
-	cache := p.cache()
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	toDelete := make([]*metaTx, 0)
-
-	p.all.ascendAll(func(mt *metaTx) bool {
-		for _, id := range ids {
-			if bytes.Equal(mt.Tx.IDHash[:], id[:]) {
-				toDelete = append(toDelete, mt)
-				switch mt.currentSubPool {
-				case PendingSubPool:
-					p.pending.Remove(mt)
-				case BaseFeeSubPool:
-					p.baseFee.Remove(mt)
-				case QueuedSubPool:
-					p.queued.Remove(mt)
-				default:
-					//already removed
-				}
-			}
-		}
-		return true
-	})
-
+	// For X Layer, optimize tx pool
 	sendersWithChangedState := make(map[uint64]struct{})
-	for _, mt := range toDelete {
-		p.discardLocked(mt, Mined)
-		sendersWithChangedState[mt.Tx.SenderID] = struct{}{}
+	for _, id := range ids {
+		if mt, ok := p.byHash[string(id[:])]; ok {
+			sendersWithChangedState[mt.Tx.SenderID] = struct{}{}
+			switch mt.currentSubPool {
+			case PendingSubPool:
+				p.pending.Remove(mt)
+			case BaseFeeSubPool:
+				p.baseFee.Remove(mt)
+			case QueuedSubPool:
+				p.queued.Remove(mt)
+			default:
+				//already removed
+			}
+			p.discardLocked(mt, Mined)
+		}
 	}
 
 	baseFee := p.pendingBaseFee.Load()
 
-	cacheView, err := cache.View(ctx, tx)
+	// For X Layer, optimize tx pool
+	cacheView, err := p._stateCache.View(ctx, tx)
 	if err != nil {
 		return err
 	}
