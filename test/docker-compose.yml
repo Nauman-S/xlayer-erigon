@@ -163,6 +163,26 @@ services:
     command: >
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
 
+  xlayer-non-validation-rpc:
+    container_name: xlayer-non-validation-rpc
+    image: cdk-erigon
+    environment:
+      - CDK_ERIGON_SEQUENCER=0
+      - WRITE_MAP=true
+    ports:
+      - 6062:6060
+      - 8126:8545
+      - 6902:6900
+      - 9191:9095
+    volumes:
+      - ./data/nonval-rpc/:/home/erigon/data/
+      - ./config/test.erigon.nonval.rpc.config.yaml:/usr/src/app/config.yaml
+      - ./config/dynamic-mynetwork-allocs.json:/usr/src/app/dynamic-mynetwork-allocs.json
+      - ./config/dynamic-mynetwork-chainspec.json:/usr/src/app/dynamic-mynetwork-chainspec.json
+      - ./config/dynamic-mynetwork-conf.json:/usr/src/app/dynamic-mynetwork-conf.json
+    command: >
+      cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+
   xlayer-mock-l1-network:
     container_name: xlayer-mock-l1-network
     image: zjg555543/geth:fork13-v0.0.3
@@ -382,6 +402,23 @@ services:
     volumes:
 #      - ./data/ds/:/home/dsrelay/
       - ./config/ds-config.toml:/app/config.toml
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/dsrelay --cfg /app/config.toml"
+
+  xlayer-non-validation-ds:
+    container_name: xlayer-non-validation-ds
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    image: zjg555543/xlayer-ds:basedev-merge-upstream-v0.2.7
+    ports:
+      - 7901:7901
+    volumes:
+#      - ./data/ds/:/home/dsrelay/
+      - ./config/ds-nonval-config.toml:/app/config.toml
     command:
       - "/bin/sh"
       - "-c"
