@@ -31,6 +31,9 @@ type Filters struct {
 
 	pendingBlock *types.Block
 
+	// for X Layer
+	RegisteredFilters *GenericSyncMap[string, *FilterInfo]
+
 	headsSubs        *SyncMap[HeadsSubID, Sub[*types.Header]]
 	pendingLogsSubs  *SyncMap[PendingLogsSubID, Sub[types.Logs]]
 	pendingBlockSubs *SyncMap[PendingBlockSubID, Sub[*types.Block]]
@@ -42,7 +45,7 @@ type Filters struct {
 	storeMu            sync.Mutex
 	logsStores         *SyncMap[LogsSubID, []*types.Log]
 	pendingHeadsStores *SyncMap[HeadsSubID, []*types.Header]
-	pendingTxsStores   *SyncMap[PendingTxsSubID, [][]types.Transaction]
+	pendingTxsStores   *SyncMap[PendingTxsSubID, []types.Transaction]
 	logger             log.Logger
 }
 
@@ -50,6 +53,7 @@ func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient,
 	logger.Info("rpc filters: subscribing to Erigon events")
 
 	ff := &Filters{
+		RegisteredFilters:  &GenericSyncMap[string, *FilterInfo]{},
 		headsSubs:          NewSyncMap[HeadsSubID, Sub[*types.Header]](),
 		pendingTxsSubs:     NewSyncMap[PendingTxsSubID, Sub[[]types.Transaction]](),
 		pendingLogsSubs:    NewSyncMap[PendingLogsSubID, Sub[types.Logs]](),
@@ -58,9 +62,31 @@ func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient,
 		onNewSnapshot:      onNewSnapshot,
 		logsStores:         NewSyncMap[LogsSubID, []*types.Log](),
 		pendingHeadsStores: NewSyncMap[HeadsSubID, []*types.Header](),
-		pendingTxsStores:   NewSyncMap[PendingTxsSubID, [][]types.Transaction](),
+		pendingTxsStores:   NewSyncMap[PendingTxsSubID, []types.Transaction](),
 		logger:             logger,
 	}
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				ff.RegisteredFilters.Range(func(id string, filter *FilterInfo) bool {
+					if filter.Expired() {
+						switch filter.Type {
+						case HeaderFilterType:
+							ff.UnsubscribeHeads(HeadsSubID(id))
+						case PendingTxFilterType:
+							ff.UnsubscribePendingTxs(PendingTxsSubID(id))
+						case LogsFilterType:
+							ff.UnsubscribeLogs(LogsSubID(id))
+						}
+					}
+					return true
+				})
+			}
+		}
+	}()
 
 	go func() {
 		if ethBackend == nil {
@@ -299,10 +325,12 @@ func (ff *Filters) SubscribeNewHeads(size int) (<-chan *types.Header, HeadsSubID
 	id := HeadsSubID(generateSubscriptionID())
 	sub := newChanSub[*types.Header](size)
 	ff.headsSubs.Put(id, sub)
+	ff.RegisteredFilters.Store(string(id), NewFilterInfo(HeaderFilterType))
 	return sub.ch, id
 }
 
 func (ff *Filters) UnsubscribeHeads(id HeadsSubID) bool {
+	ff.RegisteredFilters.Delete(string(id))
 	ch, ok := ff.headsSubs.Get(id)
 	if !ok {
 		return false
@@ -351,10 +379,12 @@ func (ff *Filters) SubscribePendingTxs(size int) (<-chan []types.Transaction, Pe
 	id := PendingTxsSubID(generateSubscriptionID())
 	sub := newChanSub[[]types.Transaction](size)
 	ff.pendingTxsSubs.Put(id, sub)
+	ff.RegisteredFilters.Store(string(id), NewFilterInfo(PendingTxFilterType))
 	return sub.ch, id
 }
 
 func (ff *Filters) UnsubscribePendingTxs(id PendingTxsSubID) bool {
+	ff.RegisteredFilters.Delete(string(id))
 	ch, ok := ff.pendingTxsSubs.Get(id)
 	if !ok {
 		return false
@@ -408,7 +438,7 @@ func (ff *Filters) SubscribeLogs(size int, crit filters.FilterCriteria) (<-chan 
 			ff.logsSubs.removeLogsFilter(id)
 		}
 	}
-
+	ff.RegisteredFilters.Store(string(id), NewFilterInfo(LogsFilterType))
 	return sub.ch, id
 }
 
@@ -419,6 +449,7 @@ func (ff *Filters) loadLogsRequester() any {
 }
 
 func (ff *Filters) UnsubscribeLogs(id LogsSubID) bool {
+	ff.RegisteredFilters.Delete(string(id))
 	isDeleted := ff.logsSubs.removeLogsFilter(id)
 	// if any filters in the aggregate need all addresses or all topics then the request to the central
 	// log subscription needs to honour this
@@ -583,16 +614,19 @@ func (ff *Filters) ReadPendingBlocks(id HeadsSubID) ([]*types.Header, bool) {
 }
 
 func (ff *Filters) AddPendingTxs(id PendingTxsSubID, txs []types.Transaction) {
-	ff.pendingTxsStores.DoAndStore(id, func(st [][]types.Transaction, ok bool) [][]types.Transaction {
+	ff.pendingTxsStores.DoAndStore(id, func(st []types.Transaction, ok bool) []types.Transaction {
 		if !ok {
-			st = make([][]types.Transaction, 0)
+			st = make([]types.Transaction, 0)
 		}
-		st = append(st, txs)
+		// ignore new pending txs when exceeding the upper limit
+		if len(st) < 10000 {
+			st = append(st, txs...)
+		}
 		return st
 	})
 }
 
-func (ff *Filters) ReadPendingTxs(id PendingTxsSubID) ([][]types.Transaction, bool) {
+func (ff *Filters) ReadPendingTxs(id PendingTxsSubID) ([]types.Transaction, bool) {
 	res, ok := ff.pendingTxsStores.Delete(id)
 	if !ok {
 		return res, false

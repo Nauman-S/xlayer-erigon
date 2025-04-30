@@ -69,10 +69,10 @@ func (f *Send) notifyTests() {
 
 func (f *Send) BroadcastPooledTxs(rlps [][]byte) (txSentTo []int) {
 	defer f.notifyTests()
-	if len(rlps) == 0 {
+	txSentTo = make([]int, len(rlps))
+	if len(rlps) == 0 || len(f.sentryClients) == 0 {
 		return
 	}
-	txSentTo = make([]int, len(rlps))
 	var prev, size int
 	for i, l := 0, len(rlps); i < len(rlps); i++ {
 		size += len(rlps[i])
@@ -112,7 +112,7 @@ func (f *Send) BroadcastPooledTxs(rlps [][]byte) (txSentTo []int) {
 func (f *Send) AnnouncePooledTxs(types []byte, sizes []uint32, hashes types2.Hashes) (hashSentTo []int) {
 	defer f.notifyTests()
 	hashSentTo = make([]int, len(types))
-	if len(types) == 0 {
+	if len(types) == 0 || len(f.sentryClients) == 0 {
 		return
 	}
 	prevI := 0

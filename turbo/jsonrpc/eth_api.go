@@ -74,11 +74,13 @@ type EthAPI interface {
 
 	// Filter related (see ./eth_filters.go)
 	NewPendingTransactionFilter(_ context.Context) (string, error)
-	NewBlockFilter(_ context.Context) (string, error)
-	NewFilter(_ context.Context, crit ethFilters.FilterCriteria) (string, error)
 	UninstallFilter(_ context.Context, index string) (bool, error)
 	GetFilterChanges(_ context.Context, index string) ([]any, error)
-	GetFilterLogs(_ context.Context, index string) ([]*types.Log, error)
+
+	// these apis were banned on X Layer
+	//NewBlockFilter(_ context.Context) (string, error)
+	//NewFilter(_ context.Context, crit ethFilters.FilterCriteria) (string, error)
+	//GetFilterLogs(_ context.Context, index string) ([]*types.Log, error)
 
 	// Account related (see ./eth_accounts.go)
 	Accounts(ctx context.Context) ([]common.Address, error)

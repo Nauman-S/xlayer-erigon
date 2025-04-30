@@ -5,17 +5,20 @@ import (
 	"strings"
 
 	"github.com/ledgerwatch/erigon-lib/common"
-	"github.com/ledgerwatch/log/v3"
-
 	"github.com/ledgerwatch/erigon/common/debug"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/filters"
 	"github.com/ledgerwatch/erigon/rpc"
 	"github.com/ledgerwatch/erigon/turbo/rpchelper"
+	"github.com/ledgerwatch/erigon/zk/sequencer"
+	"github.com/ledgerwatch/log/v3"
 )
 
 // NewPendingTransactionFilter new transaction filter
 func (api *APIImpl) NewPendingTransactionFilter(_ context.Context) (string, error) {
+	if !sequencer.IsSequencer() {
+		return api.newPendingTransactionFilterForXLayer(api.l2RpcUrl)
+	}
 	if api.filters == nil {
 		return "", rpc.ErrNotificationsUnsupported
 	}
@@ -58,53 +61,70 @@ func (api *APIImpl) NewFilter(_ context.Context, crit filters.FilterCriteria) (s
 
 // UninstallFilter new transaction filter
 func (api *APIImpl) UninstallFilter(_ context.Context, index string) (isDeleted bool, err error) {
+	if !sequencer.IsSequencer() {
+		return api.uninstallFilterForXLayer(api.l2RpcUrl, index)
+	}
 	if api.filters == nil {
 		return false, rpc.ErrNotificationsUnsupported
 	}
 	// remove 0x
 	cutIndex := strings.TrimPrefix(index, "0x")
-	if ok := api.filters.UnsubscribeHeads(rpchelper.HeadsSubID(cutIndex)); ok {
-		isDeleted = true
+	if info, ok := api.filters.RegisteredFilters.Load(cutIndex); ok {
+		switch info.Type {
+		case rpchelper.HeaderFilterType:
+			api.filters.UnsubscribeHeads(rpchelper.HeadsSubID(cutIndex))
+		case rpchelper.PendingTxFilterType:
+			api.filters.UnsubscribePendingTxs(rpchelper.PendingTxsSubID(cutIndex))
+		case rpchelper.LogsFilterType:
+			api.filters.UnsubscribeLogs(rpchelper.LogsSubID(cutIndex))
+		}
+		return true, nil
 	}
-	if ok := api.filters.UnsubscribePendingTxs(rpchelper.PendingTxsSubID(cutIndex)); ok {
-		isDeleted = true
-	}
-	if ok := api.filters.UnsubscribeLogs(rpchelper.LogsSubID(cutIndex)); ok {
-		isDeleted = true
-	}
-	return
+
+	return false, nil
 }
 
 // GetFilterChanges implements eth_getFilterChanges.
 // Polling method for a previously-created filter
 // returns an array of logs, block headers, or pending transactions which occurred since last poll.
 func (api *APIImpl) GetFilterChanges(_ context.Context, index string) ([]any, error) {
+	if !sequencer.IsSequencer() {
+		return api.getFilterChangesForXLayer(api.l2RpcUrl, index)
+	}
 	if api.filters == nil {
 		return nil, rpc.ErrNotificationsUnsupported
 	}
-	stub := make([]any, 0)
+
 	// remove 0x
 	cutIndex := strings.TrimPrefix(index, "0x")
-	if blocks, ok := api.filters.ReadPendingBlocks(rpchelper.HeadsSubID(cutIndex)); ok {
-		for _, v := range blocks {
-			stub = append(stub, v.Hash())
-		}
-		return stub, nil
+	filter, ok := api.filters.RegisteredFilters.Load(cutIndex)
+	if !ok {
+		return nil, rpc.ErrSubscriptionNotFound
 	}
-	if txs, ok := api.filters.ReadPendingTxs(rpchelper.PendingTxsSubID(cutIndex)); ok {
-		if len(txs) > 0 {
-			for _, tx := range txs[0] {
+
+	// Update to prevent deletion due to expiration
+	filter.Update()
+
+	stub := make([]any, 0)
+	switch filter.Type {
+	case rpchelper.HeaderFilterType:
+		if blocks, ok := api.filters.ReadPendingBlocks(rpchelper.HeadsSubID(cutIndex)); ok {
+			for _, v := range blocks {
+				stub = append(stub, v.Hash())
+			}
+		}
+	case rpchelper.PendingTxFilterType:
+		if txs, ok := api.filters.ReadPendingTxs(rpchelper.PendingTxsSubID(cutIndex)); ok {
+			for _, tx := range txs {
 				stub = append(stub, tx.Hash())
 			}
-			return stub, nil
 		}
-		return stub, nil
-	}
-	if logs, ok := api.filters.ReadLogs(rpchelper.LogsSubID(cutIndex)); ok {
-		for _, v := range logs {
-			stub = append(stub, v)
+	case rpchelper.LogsFilterType:
+		if logs, ok := api.filters.ReadLogs(rpchelper.LogsSubID(cutIndex)); ok {
+			for _, v := range logs {
+				stub = append(stub, v)
+			}
 		}
-		return stub, nil
 	}
 	return stub, nil
 }
