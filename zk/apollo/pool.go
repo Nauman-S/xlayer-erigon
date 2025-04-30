@@ -136,3 +136,23 @@ func (cfg *ApolloConfig) GetEnableFreeGasList(localEnableFreeGasList bool) bool 
 	}
 	return localEnableFreeGasList
 }
+
+func (cfg *ApolloConfig) CheckOkPayAddr(localOkPayAccountsList libcommon.OrderedList[libcommon.Address], addr libcommon.Address) bool {
+	cfg.RLock()
+	defer cfg.RUnlock()
+
+	if cfg.isPoolEnabled() {
+		return cfg.EthCfg.DeprecatedTxPool.OkPayAccountsList.Contains(addr)
+	}
+	return localOkPayAccountsList.Contains(addr)
+}
+
+func (cfg *ApolloConfig) GetOkPayBlockGasLimit(localOkPayBlockGasLimit uint64) uint64 {
+	cfg.RLock()
+	defer cfg.RUnlock()
+
+	if cfg.isPoolEnabled() {
+		return cfg.EthCfg.DeprecatedTxPool.OkPayBlockGasLimit
+	}
+	return localOkPayBlockGasLimit
+}

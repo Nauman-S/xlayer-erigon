@@ -108,6 +108,15 @@ var (
 		Usage: "EnableTimsort enable timsort to instead of built-in sorting",
 		Value: false,
 	}
+	// OkPay
+	TxPoolOkPayAccountsList = cli.StringFlag{
+		Name:  "txpool.okpay-accounts-list",
+		Usage: "List of OkPay accounts",
+	}
+	TxPoolOkPayBlockGasLimit = cli.Uint64Flag{
+		Name:  "txpool.okpay-block-gas-limit",
+		Usage: "Max gas limit per block allocated for OkPay transactions",
+	}
 	// Gas Pricer
 	GpoTypeFlag = cli.StringFlag{
 		Name:  "gpo.type",
@@ -433,6 +442,21 @@ func setTxPoolXLayer(ctx *cli.Context, cfg *ethconfig.DeprecatedTxPoolConfig) {
 	}
 	if ctx.IsSet(TxPoolEnableTimsort.Name) {
 		cfg.EnableTimsort = ctx.Bool(TxPoolEnableTimsort.Name)
+	}
+
+	// Set OkPay txpool configs
+	setTxPoolOkPay(ctx, cfg)
+}
+
+func setTxPoolOkPay(ctx *cli.Context, cfg *ethconfig.DeprecatedTxPoolConfig) {
+	if ctx.IsSet(TxPoolOkPayAccountsList.Name) {
+		okPayAccountsList := libcommon.CliString2Array(ctx.String(TxPoolOkPayAccountsList.Name))
+		for _, okPayAccount := range okPayAccountsList {
+			cfg.OkPayAccountsList.Add(libcommon.HexToAddress(okPayAccount))
+		}
+	}
+	if ctx.IsSet(TxPoolOkPayBlockGasLimit.Name) {
+		cfg.OkPayBlockGasLimit = ctx.Uint64(TxPoolOkPayBlockGasLimit.Name)
 	}
 }
 
