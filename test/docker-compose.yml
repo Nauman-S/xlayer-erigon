@@ -133,7 +133,7 @@ services:
       - 6060:6060
       - 8123:8545
       - 6900:6900
-      - 9092:9095
+      - 9195:9095
     volumes:
       - ./data/seq/:/home/erigon/data/
       - ./config/test.erigon.seq.config.yaml:/usr/src/app/config.yaml
@@ -153,7 +153,7 @@ services:
       - 6061:6060
       - 8124:8545
       - 6901:6900
-      - 9091:9095
+      - 9295:9095
     volumes:
       - ./data/rpc/:/home/erigon/data/
       - ./config/test.erigon.rpc.config.yaml:/usr/src/app/config.yaml
@@ -420,7 +420,7 @@ services:
       - 6060:6060
       - 8123:8545
       - 6900:6900
-      - 9092:9095
+      - 9195:9095
     volumes:
       - ./mainnet/seq:/home/erigon/data/
       - ./config/xlayerconfig-mainnet.yaml:/usr/src/app/config.yaml
@@ -436,7 +436,7 @@ services:
       - 6061:6060
       - 8124:8545
       - 6901:6900
-      - 9091:9095
+      - 9295:9095
     volumes:
       - ./mainnet/rpc:/home/erigon/data/
       - ./config/xlayerconfig-mainnet-rpc.yaml:/usr/src/app/config.yaml
