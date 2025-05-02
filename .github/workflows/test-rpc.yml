@@ -1,0 +1,29 @@
+name: test-rpc
+
+on:
+  push:
+    branches:
+      - ns/wrk-rpc-test
+  #  schedule:
+  #    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    with:
+      ref: ns/workflow-rpc-automation
+
+
+jobs:
+  eth-namespace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install wrk
+        run: |
+          git clone https://github.com/wg/wrk.git
+          cd wrk
+          make
+          cp wrk /usr/local/bin
+
+      - name: eth_interface
+        run: chmod u+x eth.sh && bash eth.sh
+        working-directory: tests/automated-testing/scripts/eth
