@@ -8,7 +8,7 @@ on:
   #    - cron: '*/5 * * * *'
   workflow_dispatch:
     with:
-      ref: ns/workflow-rpc-automation
+      ref: ns/wrk-rpc-test
 
 
 jobs:
