@@ -304,6 +304,11 @@ var (
 		Value: false,
 	}
 	// Non Validation DataStream
+	EnableNonValidationDataStream = cli.BoolFlag{
+		Name:  "zkevm.enable-non-validation-data-stream",
+		Usage: "Enable or disable non validation data stream",
+		Value: false,
+	}
 	NonValidationDataStreamPort = cli.UintFlag{
 		Name:  "zkevm.non-validation-data-stream-port",
 		Usage: "Define the port used for the zkevm non validation data stream",

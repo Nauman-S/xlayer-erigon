@@ -33,6 +33,7 @@ zkevm.sequencer-block-seal-time: "6s"
 zkevm.sequencer-batch-seal-time: "12s"
 zkevm.sequencer-batch-sleep-duration: "0s"
 
+zkevm.enable-non-validation-data-stream: true
 zkevm.data-stream-host: "localhost"
 zkevm.data-stream-port: 6901
 zkevm.default-gas-price: 1000000000

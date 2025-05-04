@@ -832,9 +832,15 @@ func getHighestDSL2Block(ctx context.Context, batchCfg BatchesCfg, latestFork ui
 	// first try the sequencer rpc endpoint, it might not have been upgraded to the
 	// latest version yet so if we get an error back from this call we can try the older
 	// method of calling the datastream directly
-	highestBlock, err := GetSequencerHighestDataStreamBlock(cfg.L2RpcUrl)
-	if err == nil {
-		return highestBlock, nil
+	//
+	// For X Layer
+	var err error
+	if !batchCfg.zkCfg.XLayer.EnableNonValidationDataStream {
+		highestBlock, err := GetSequencerHighestDataStreamBlock(cfg.L2RpcUrl)
+		if err == nil {
+			return highestBlock, nil
+		}
+		log.Info("getHighestDSL2Block", "highestBlock", highestBlock)
 	}
 
 	// so something went wrong with the rpc call, let's try the older method,
