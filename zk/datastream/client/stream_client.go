@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
-
-	"sync"
 
 	"github.com/ledgerwatch/erigon/zk/datastream/proto/github.com/0xPolygonHermez/zkevm-node/state/datastream"
 	"github.com/ledgerwatch/erigon/zk/datastream/types"
@@ -574,7 +573,8 @@ LOOP:
 			time.Sleep(10 * time.Microsecond)
 		}
 
-		if c.header.TotalEntries < entryNum {
+		// if c.header.TotalEntries < entryNum {
+		if c.header.TotalEntries == entryNum+1 {
 			log.Trace("[Datastream client] reached the current end of the stream", "header_totalEntries", c.header.TotalEntries, "entryNum", entryNum)
 
 			// For X Layer, fix ds receive issue
