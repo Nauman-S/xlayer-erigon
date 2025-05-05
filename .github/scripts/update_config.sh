@@ -27,7 +27,7 @@ fi
 
 # Add new configurations
 cat << EOF >> "$TEMP_FILE"
-zkevm.sequencer-block-seal-time: "5s"
+zkevm.sequencer-block-seal-time: "3s"
 zkevm.executor-urls: "xlayer-executor:50071"
 zkevm.executor-strict: true
 zkevm.witness-full: false
