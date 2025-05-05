@@ -137,10 +137,26 @@ stop: ## Stops all services
 .PHONY: min-run
 min-run: build-docker ## Runs a minimal node
 	$(RUN_DOCKER_L1_NETWORK)
+	$(RUN_DOCKER_POOL_DB)
 	sleep 3
 	$(RUN_DOCKER_SEQ)
-	$(RUN_DOCKER_PROMETHEUS)
-	$(RUN_DOCKER_GRAFANA)
+	$(RUN_DOCKER_POOL_MANAGER)
+	sleep 3
+	docker-compose -f docker-compose.yml up -d xlayer-rpc
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-1
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-2
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-3
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-4
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-5
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-6
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-7
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-8
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-9
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-10
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-11
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-12
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-13
+	docker-compose -f docker-compose.yml up -d xlayer-rpc-14
 
 .PHONY: test # Run all tests on Linux, but some are not supported on Mac
 test: 
@@ -466,7 +482,6 @@ data-recovery:
 	rm -rf data/seq/*; cp -r data/rpc/* data/seq/
 	$(RUN_DOCKER_SEQ)
 	sleep 10
-	$(RUN_DOCKER_RPC)
 	sleep 3
 	go test -count=1 -failfast -race -v -p 1 -timeout 300s -run TestCheckVerify ./e2e/data_loss_test.go
 
