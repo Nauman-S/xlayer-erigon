@@ -130,5 +130,6 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 		logger.Error("failed to flush data to DB", "error", err)
 		return
 	}
+	logger.Info(fmt.Sprintf("Block %d has been flushed to smt DB.", saveData.BlockHeight))
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
