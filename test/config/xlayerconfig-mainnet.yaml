@@ -73,7 +73,7 @@ metrics.port: 9095
 yieldsize: 35
 zkevm.seal-batch-immediately-on-overflow: true
 zkevm.sequencer-timeout-on-empty-tx-pool: 1ms
-zkevm.pre-run-address-list: [""]
+zkevm.pre-run-address-list: ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534", "0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E"]
 zkevm.block-info-concurrent: true
 zkevm.standalone-smt-db: true
 zkevm.enable-async-commit: true
