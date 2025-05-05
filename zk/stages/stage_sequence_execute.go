@@ -200,7 +200,10 @@ func sequencingBatchStep(
 	blockDataSizeChecker := NewBlockDataChecker(cfg.zk.ShouldCountersBeUnlimited(batchState.isL1Recovery()))
 	streamWriter := newSequencerBatchStreamWriter(batchContext, batchState)
 	// For X Layer
-	nonValidationStreamWriter := newSequencerBatchNonValidationStreamWriter(batchContext, batchState)
+	var nonValidationStreamWriter *SequencerBatchStreamWriter
+	if cfg.nonValidationDataStreamServer != nil {
+		nonValidationStreamWriter = newSequencerBatchNonValidationStreamWriter(batchContext, batchState)
+	}
 
 	// injected batch
 	if executionAt == 0 {
@@ -237,12 +240,32 @@ func sequencingBatchStep(
 				log.Error(fmt.Sprintf("[%s] Failed to get smt max block number", logPrefix), "error", err, "smtMaxBlockNumber", smtMaxBlockNumber)
 				return err
 			}
+
+			nonStreamHeight, _ := nonValidationStreamWriter.streamServer.GetHighestBlockNumber()
+			nonStreamBatch, _ := nonValidationStreamWriter.streamServer.GetHighestBatchNumber()
+			streamBlock, _ := streamWriter.streamServer.GetHighestBlockNumber()
+			streamBatch, _ := streamWriter.streamServer.GetHighestBatchNumber()
+
+			log.Info("Before UnwindToBlock", "nonStreamHeight", nonStreamHeight, "nonStreamBatch", nonStreamBatch, "streamBlock", streamBlock, "streamBatch", streamBatch)
+
+			if cfg.nonValidationDataStreamServer != nil && smtMaxBlockNumber > 1 {
+				log.Info("Sequencing batch step unwind to block", "smtMaxBlockNumber", smtMaxBlockNumber+1)
+				if err = nonValidationStreamWriter.streamServer.UnwindToBlock(smtMaxBlockNumber + 1); err != nil {
+					log.Info("Sequencing batch step unwind to block", "err", err)
+					return err
+				}
+			}
+			nonStreamHeight, _ = nonValidationStreamWriter.streamServer.GetHighestBlockNumber()
+			nonStreamBatch, _ = nonValidationStreamWriter.streamServer.GetHighestBatchNumber()
+			streamBlock, _ = streamWriter.streamServer.GetHighestBlockNumber()
+			streamBatch, _ = streamWriter.streamServer.GetHighestBatchNumber()
+			log.Info("After UnwindToBlock", "nonStreamHeight", nonStreamHeight, "nonStreamBatch", nonStreamBatch, "streamBlock", streamBlock, "streamBatch", streamBatch)
+
 			if smtMaxBlockNumber != 0 && smtMaxBlockNumber+1 < executionAt {
 				targetBlock, err := getTargetBlockForSMTAlignment(sdb, logPrefix, executionAt, smtMaxBlockNumber)
 				if err != nil {
 					return err
 				}
-
 				isUnwinding, err := unwindExecutionToSMT(batchContext, executionAt, targetBlock, u)
 				if err != nil {
 					return err
@@ -252,6 +275,13 @@ func sequencingBatchStep(
 					if err != nil {
 						return err
 					}
+					if cfg.nonValidationDataStreamServer != nil && targetBlock > 1 {
+						log.Info("Sequencing batch step unwind to block", "target", targetBlock)
+						if err = nonValidationStreamWriter.streamServer.UnwindToBlock(targetBlock); err != nil {
+							log.Info("Sequencing batch step unwind to block", "err", err)
+							return err
+						}
+					}
 					// set to pending resequence state
 					shouldCheckForExecutionAndSMTAlignment = SMTAlignmentPendingResequence
 					log.Warn(fmt.Sprintf("[%s] SMT alignment check triggered resequence", logPrefix))
@@ -260,9 +290,40 @@ func sequencingBatchStep(
 			}
 		}
 
+		nonStreamHeight, _ := nonValidationStreamWriter.streamServer.GetHighestBlockNumber()
+		nonStreamBatch, _ := nonValidationStreamWriter.streamServer.GetHighestBatchNumber()
+		streamBlock, _ := streamWriter.streamServer.GetHighestBlockNumber()
+		streamBatch, _ := streamWriter.streamServer.GetHighestBatchNumber()
+		log.Info("After isUnwinding UnwindToBlock", "nonStreamHeight", nonStreamHeight, "nonStreamBatch", nonStreamBatch, "streamBlock", streamBlock, "streamBatch", streamBatch)
+
 		// set to terminated state, indicating verification is completed
 		shouldCheckForExecutionAndSMTAlignment = SMTAlignmentTerminated
 		log.Info(fmt.Sprintf("[%s] SMT alignment check completed", logPrefix))
+	}
+
+	// For X Layer
+	if shouldCheckForExecutionAndDataStreamAlignment {
+		if !batchState.isAnyRecovery() {
+			if cfg.nonValidationDataStreamServer != nil {
+				smtMaxBlockNumber, err := sdb.eridb.GetLastHeight()
+				if err != nil {
+					log.Error(fmt.Sprintf("[%s] Failed to get smt max block number", logPrefix), "error", err, "smtMaxBlockNumber", smtMaxBlockNumber)
+					return err
+				}
+				streamHeight, err := nonValidationStreamWriter.streamServer.GetHighestBlockNumber()
+				if err != nil {
+					log.Error(fmt.Sprintf("[%s] Failed to get non validation datastream highest block number", logPrefix), "error", err, "streamHeight", streamHeight)
+					return err
+				}
+				log.Info(fmt.Sprintf("Non validation streamheight: %d", streamHeight))
+
+				targetBlock, err := getTargetBlockForSMTAlignment(sdb, logPrefix, executionAt, smtMaxBlockNumber)
+				// TODO(cloud): sync the missing blocks
+				if streamHeight < targetBlock {
+
+				}
+			}
+		}
 	}
 
 	if shouldCheckForExecutionAndDataStreamAlignment {

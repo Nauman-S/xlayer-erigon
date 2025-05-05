@@ -62,7 +62,7 @@ RUN_DOCKER_GRAFANA := $(DOCKER_COMPOSE) up -d $(DOCKER_GRAFANA)
 
 STOP_DOCKER_SEQ := $(DOCKER_COMPOSE) stop $(DOCKER_SEQ)
 STOP_DOCKER_RPC := $(DOCKER_COMPOSE) stop $(DOCKER_RPC)
-STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3
+STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3; rm -rf data;
 
 .PHONY: build-docker
 build-docker: ## Build cdk-erigoin for sequencer and rpc
@@ -97,7 +97,7 @@ run: build-docker ## Runs a full node
 	$(RUN_DOCKER_GRAFANA)
 
 .PHONY: run-nonval-ds
-run-nonval: build-docker ## Runs a full node
+run-nonval-ds: build-docker ## Runs a full node
 	# base services
 	$(RUN_DOCKER_STATELESS_EXECUTOR)
 	$(RUN_DOCKER_L1_NETWORK)
@@ -548,3 +548,7 @@ vmtouch-check:
 .PHONY: seq
 seq: build-docker ## Runs a minimal node
 	$(RUN_DOCKER_SEQ)
+
+.PHONY: rpc
+rpc: build-docker ## Runs a minimal node
+	$(RUN_DOCKER_RPC)

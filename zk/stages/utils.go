@@ -13,17 +13,20 @@ import (
 	"net/url"
 
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon/core/types"
 	db2 "github.com/ledgerwatch/erigon/smt/pkg/db"
 	jsonClient "github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
 	jsonTypes "github.com/ledgerwatch/erigon/zkevm/jsonrpc/types"
-	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 )
 
 const (
 	SEQUENCER_DATASTREAM_RPC_CALL = "zkevm_getLatestDataStreamBlock"
 	BATCH_NUMBER_BY_BLOCK_NUMBER  = "zkevm_batchNumberByBlockNumber"
 	ZK_BLOCK_BY_NUMBER            = "zkevm_getFullBlockByNumber"
+
+	// For X Layer
+	SEQUENCER_NON_VALIDATION_DATASTREAM_RPC_CALL = "zkevm_getLatestNonValidationDataStreamBlock"
 )
 
 func TrimHexString(s string) string {
@@ -163,6 +166,16 @@ func DeriveEffectiveGasPrice(cfg SequenceBlockCfg, tx types.Transaction) uint8 {
 
 func GetSequencerHighestDataStreamBlock(endpoint string) (uint64, error) {
 	res, err := jsonClient.JSONRPCCall(endpoint, SEQUENCER_DATASTREAM_RPC_CALL)
+	if err != nil {
+		return 0, err
+	}
+
+	return trimHexAndHandleUint64Result(res)
+}
+
+// For X Layer
+func GetSequencerHighestNonValidationDataStreamBlock(endpoint string) (uint64, error) {
+	res, err := jsonClient.JSONRPCCall(endpoint, SEQUENCER_NON_VALIDATION_DATASTREAM_RPC_CALL)
 	if err != nil {
 		return 0, err
 	}

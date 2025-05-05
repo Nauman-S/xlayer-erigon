@@ -840,7 +840,11 @@ func getHighestDSL2Block(ctx context.Context, batchCfg BatchesCfg, latestFork ui
 		if err == nil {
 			return highestBlock, nil
 		}
-		log.Info("getHighestDSL2Block", "highestBlock", highestBlock)
+	} else {
+		highestBlock, err := GetSequencerHighestNonValidationDataStreamBlock(cfg.L2RpcUrl)
+		if err == nil {
+			return highestBlock, nil
+		}
 	}
 
 	// so something went wrong with the rpc call, let's try the older method,

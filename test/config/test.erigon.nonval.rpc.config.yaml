@@ -4,7 +4,7 @@ http: true
 private.api.addr: localhost:9191
 zkevm.l2-chain-id: 195
 zkevm.l2-sequencer-rpc-url: http://xlayer-seq:8545
-zkevm.l2-datastreamer-url: xlayer-seq:6901
+zkevm.l2-datastreamer-url: xlayer-non-validation-ds:7901
 zkevm.l1-chain-id: 1337
 zkevm.l1-rpc-url: http://xlayer-mock-l1-network:8545
 

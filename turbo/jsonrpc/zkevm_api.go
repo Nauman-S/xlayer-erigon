@@ -82,6 +82,8 @@ type ZkEvmAPI interface {
 	GetRollupAddress(ctx context.Context) (res json.RawMessage, err error)
 	GetRollupManagerAddress(ctx context.Context) (res json.RawMessage, err error)
 	GetLatestDataStreamBlock(ctx context.Context) (hexutil.Uint64, error)
+	// For X Layer
+	GetLatestNonValidationDataStreamBlock(ctx context.Context) (hexutil.Uint64, error)
 }
 
 const getBatchWitness = "getBatchWitness"
@@ -1985,6 +1987,22 @@ func (api *ZkEvmAPIImpl) GetLatestDataStreamBlock(ctx context.Context) (hexutil.
 	defer tx.Rollback()
 
 	latestBlock, err := stages.GetStageProgress(tx, stages.DataStream)
+	if err != nil {
+		return 0, err
+	}
+
+	return hexutil.Uint64(latestBlock), nil
+}
+
+// For X Layer
+func (api *ZkEvmAPIImpl) GetLatestNonValidationDataStreamBlock(ctx context.Context) (hexutil.Uint64, error) {
+	tx, err := api.db.BeginRo(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	latestBlock, err := stages.GetStageProgress(tx, stages.NonValidationDataStream)
 	if err != nil {
 		return 0, err
 	}
