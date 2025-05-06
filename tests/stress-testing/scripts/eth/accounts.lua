@@ -28,5 +28,5 @@ end
 response = handle_response
 
 done = function(summary, latency, requests)
-    print_summary(summary, latency, requests, threads)
+    print_summary(summary, latency, requests, threads, methodName)
 end

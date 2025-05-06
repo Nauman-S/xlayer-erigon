@@ -20,7 +20,7 @@ request = function()
     local blockStart = math.random(1, 11276923)
     local blockEnd = blockStart + 15
     local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[{"fromBlock":"0x%X", "toBlock":"0x%X"}],"id":1}', methodName, blockStart, blockEnd)
-    print(body)
+    --print(body)
     headers = {}
     headers["Content-Type"] = "application/json"
     return wrk.format("POST",nil,headers,body)

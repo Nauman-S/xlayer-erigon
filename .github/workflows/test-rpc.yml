@@ -34,4 +34,4 @@ jobs:
 
       - name: eth_interface
         run: chmod u+x eth.sh && bash eth.sh
-        working-directory: tests/automated-testing/scripts/eth
+        working-directory: tests/stress-testing/scripts/eth
