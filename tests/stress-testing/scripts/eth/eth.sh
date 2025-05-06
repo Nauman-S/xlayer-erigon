@@ -41,6 +41,7 @@ methods=(
     "hashrate"
     "estimateGas"
     "call"
+    "sendRawTransaction"
 )
 
 if command -v wrk2 >/dev/null 2>&1; then
