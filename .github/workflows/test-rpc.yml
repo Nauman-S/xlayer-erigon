@@ -25,6 +25,10 @@ jobs:
           make
           cp wrk /usr/local/bin
 
+      - name: eth_wrk
+        run: chmod u+x eth.sh && bash eth.sh
+        working-directory: tests/stress-testing/scripts/eth
+
       - name: Install wrk2
         run: |
           git clone https://github.com/giltene/wrk2.git
@@ -32,6 +36,6 @@ jobs:
           make
           cp wrk /usr/local/bin/wrk2
 
-      - name: eth_interface
+      - name: eth_wrk2
         run: chmod u+x eth.sh && bash eth.sh
         working-directory: tests/stress-testing/scripts/eth
