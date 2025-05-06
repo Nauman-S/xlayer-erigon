@@ -40,7 +40,7 @@ methods=(
 )
 
 if command -v wrk2 >/dev/null 2>&1; then
-    WRK_COMMAND="wrk2 -t 2 -c 10 -d 10s -T 10s -R 100 -s"
+    WRK_COMMAND="wrk2 -t 2 -c 10 -d 10s -T 10s -L -R 100 -s"
     echo "Using wrk2"
 elif command -v wrk >/dev/null 2>&1; then
 #    -t 16 -c 5000 -d 60s -T 30s -s
