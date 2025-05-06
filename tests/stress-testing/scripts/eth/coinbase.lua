@@ -1,5 +1,5 @@
 dofile("common.lua")
-methodName = "eth_chainId"
+methodName = "eth_coinbase"
 wrk.method = "POST"
 wrk.headers["Content-Type"] = "application/json"
 
