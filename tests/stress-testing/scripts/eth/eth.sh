@@ -42,6 +42,7 @@ methods=(
     "estimateGas"
     "call"
     "sendRawTransaction"
+    "getProof"
 )
 
 if command -v wrk2 >/dev/null 2>&1; then
