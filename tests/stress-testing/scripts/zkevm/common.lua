@@ -53,7 +53,7 @@ function handle_response(status, headers, body)
         -- print(1,body,"  ", "SET ",counter)
     elseif string.find(body,'"result":') then
         counter_valid = counter_valid + 1
-        -- print(2,body)
+         --print(2,body)
     elseif not string.find(body,'"jsonrpc":') then
         counter_failed = counter_failed + 1
         --         print("RPC call failed")
