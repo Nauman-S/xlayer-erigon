@@ -11,7 +11,8 @@ setup = function(thread)
 end
 
 request = function()
-    local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[11615610, "full"],"id":1}', methodName)
+    local batch = math.random(1161509, 11615804)
+    local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[%d, "full"],"id":1}', methodName, batch)
     headers = {}
     headers["Content-Type"] = "application/json"
     return wrk.format("POST", nil, headers, body)
