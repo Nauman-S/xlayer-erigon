@@ -1,5 +1,5 @@
 dofile("common.lua")
-methodName = "zkevm_getFullBlocksByHash"
+methodName = "zkevm_getFullBlockByHash"
 wrk.method = "POST"
 wrk.headers["Content-Type"] = "application/json"
 
@@ -17,7 +17,8 @@ setup = function(thread)
 end
 
 request = function()
-    local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[],"id":1}', methodName)
+    local block_hash= "0x5bdeaa85bc72fb7d01e8ffdbca5c15781e3e24225308e4e7aededb9b9f6f2478"
+    local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[],"id":1}', methodName, block_hash)
     headers = {}
     headers["Content-Type"] = "application/json"
     return wrk.format("POST", nil, headers, body)

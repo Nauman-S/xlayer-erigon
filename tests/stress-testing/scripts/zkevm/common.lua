@@ -50,7 +50,6 @@ function handle_response(status, headers, body)
         --         print("Error response")
         --         print("Status: " .. status)
         --         print("Body: " .. body)
-        -- print(1,body,"  ", "SET ",counter)
     elseif string.find(body,'"result":') then
         counter_valid = counter_valid + 1
          --print(2,body)
