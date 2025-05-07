@@ -1,5 +1,5 @@
 dofile("common.lua")
-methodName = "eth_estimateGas"
+methodName = "eth_call"
 wrk.method = "POST"
 wrk.headers["Content-Type"] = "application/json"
 
