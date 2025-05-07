@@ -13,13 +13,13 @@ on:
 
 jobs:
   eth:
-    uses: ./.github/workflows/rpc-template.yml
+    uses: ./.github/workflows/test-rpc-template.yml
     with:
       namespace: eth
       script: eth.sh
 
   zkevm:
-    uses: ./.github/workflows/rpc-template.yml
+    uses: ./.github/workflows/test-rpc-template.yml
     with:
       namespace: zkevm
       script: zkevm.sh
