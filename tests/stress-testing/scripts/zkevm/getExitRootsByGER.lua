@@ -11,6 +11,7 @@ setup = function(thread)
 end
 
 request = function()
+    local exit_root = "0x527ea5f2db0b0212b337b1fdf52e1f2a7bd9e5db97d6dafe8fef9b2967ac8319"
     local body = string.format('{"jsonrpc":"2.0","method":"%s","params":[],"id":1}', methodName)
     headers = {}
     headers["Content-Type"] = "application/json"
